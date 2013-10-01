@@ -126,14 +126,38 @@
 		return current;
 	};
 
-	var test = [];
-	for (var i = 0; i < 60; i++) {
-		if (i < 10) {
-			test.push(Math.random() * 60 + 30|0);
-		} else {
-			test.push(Math.random() * 30 |0);
+	var insertIntoHuffman = function(tree, code, codeSize, value) {
+		var dir;
+		while (codeSize-- > 1) {
+			dir = (code >> codeSize) & 1 ? "right" : "left";
+			if (tree[dir] == null) tree[dir] = new HuffmanNode();
+			tree = tree[dir];
 		}
-	}
+		dir = (code >> codeSize) & 1 ? "right" : "left";
+		tree[dir] = new HuffmanLeaf(value, 0);
+	};
+
+	var fixedHuffmanTree = new HuffmanNode();
+
+	(function(){
+		var code = 0x30; // spec says 00110000
+		for (var i = 0; i < 144; i++) {
+			insertIntoHuffman(fixedHuffmanTree, code++, 8, i);
+		}
+		code = 0x190; //spec says 110010000
+		for (var i = 144; i < 256; i++) {
+			insertIntoHuffman(fixedHuffmanTree, code++, 9, i);
+		}
+		code = 0;
+		for (var i = 256; i < 280; i++) {
+			insertIntoHuffman(fixedHuffmanTree, code++, 7, i);
+		}
+		code = 0xc0 //spec says 11000000
+		for (var i = 280; i < 288; i++) {
+			insertIntoHuffman(fixedHuffmanTree, code++, 8, i);
+		}
+	})();
+
 
 	var printSymbols = function printSymbols(tree, depth) {
 		if (tree.leaf) {
@@ -144,7 +168,14 @@
 			printSymbols(tree.right, depth);
 		}
 	};
-	printSymbols(makeHuffmanTree(test), 0);
+	printSymbols(fixedHuffmanTree, 0);
+
+
+
+
+	module.exports.HuffmanNode = HuffmanNode;
+	module.exports.insertIntoHuffman = insertIntoHuffman;
+	module.exports.makeHuffmanTree = makeHuffmanTree;
 })();
 
 // parent = (self - 1) << 1
