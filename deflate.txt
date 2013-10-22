@@ -1,0 +1,106 @@
+O processo de compressão do DEFLATE pode ser visto como uma sequência de
+transformações.
+
+O input é uma sequência de octetos que pode ser lida como uma sequência de
+inteiros no intervalo 0-255.
+
+A primeira transformação é virtual, o alfabeto deixa de ser os números entre
+0 e 255 e passa a ser os inteiros entre 0 e 285.
+Isto implicaria que os símbolos passassem a precisar de 9 bits para serem
+codificados, mas na prática, o input inicial não é alterado.
+OS símbolos adicionais são:
+256 fim do bloco
+257-285 representam comprimentos de sequências de bytes
+
+Os símbolos de comprimento são sempre seguidos de símbolos de distância.
+Os símbolos de distância fazem parte doutro alfabeto (0-29).
+
+
+A transformação seguinte tenta encontrar sequências repetidas de pelo menos
+3 bytes. Se é encontrada uma sequência de pelo menos 3 bytes que tenha ocorrido
+nos 32KB anteriores, a sequência é subtituída por um símbolo que representa o
+tamanho da repetição e um símbolo que indica a distância a que a repetição
+ocorreu.
+Este passo reduz a quantidade de símbolos que têm de ser escritos.
+A compressão resultante depende da quantidade e comprimento de repetições no
+input original.
+
+O passo seguinte é modificar o tamanho de cada símbolo, de forma a que cada
+símbolo utilize um número de bits inversamente proporcional à sua frequência.
+Para tal, utiliza-se a codificação Huffman. O processo é aplicado de forma
+independente para cada um dos dois alfabetos mencionados.
+O processo a usar é o seguinte:
+
+Contam-se o número de ocorrências de cada símbolo, o que pode ficar armazenado
+num array ocurrences[] em que o índice representa o símbolo e o valor
+representa o nr de ocorrências.
+Com esse array, constrói-se um outro array de árvores binárias. Cada uma dessas
+árvores binárias contém apenas um nó, que por sua vez tem informação do nr de
+ocorrências e do símbolo que codifica.
+Ex.:
+var nodes = [];
+for (var i = 0; i < o.length; i++) {
+	if (o[i] > 0) { //ignoram-se os símbolos que não ocorrem
+		nodes.push({symbol: i, count: o[i]});
+	}
+}
+
+De seguida, os árvores serão fundindas até se obter apenas uma árvore.
+Começa-se com ás árvores que representam o menor número de ocorrências.
+Supondo que o nodes[] é um heap que devolve sempre a árvore mais pequena:
+
+while (nodes.length > 1) {
+	var left = nodes.pop();
+	var right = nodes.pop();
+	var newNode = {
+		left: left,
+		right: right,
+		count: left.count + right.count
+	};
+	nodes.push(newNode);
+}
+
+var huffmanTree = nodes.pop();
+
+O resultado é uma árvore de onde se obtêem as novas codificações.
+Cada símbolo estará localizado numa folha da árvore e o símbolo que é
+usado é o caminho do topo da árvore até essa folha, 0 = left, 1 = right.
+Os símbolos mais usados estão mais próximos da raíz, e portanto usam menos
+bits para serem codificados.
+Tendo a árvore original é sempre possível descodificar os símbolos, desde que
+os bits sejam lidos por ordem (1 a 1). Percorre-se o caminho até atingir uma
+folha da árvore. Aí produz-se o símbolo correspondente e volta-se à raíz.
+
+(O DEFLATE impõe que, os símbolos que usam o mesmo número de bits,
+devem ter a mesma ordenação que tinham antes da codificação Huffman;
+mas essa imposição não altera significativamente o processo)
+
+Descodificação
+
+Para descomprimir o DEFLATE, é necessário recontruir as árvores primeiro.
+A informação necessária para construir as árvores está no início do bloco.
+De seguida, é feito algo como:
+
+
+while (true) {
+	var tree = originalTree;
+	while (!tree.isLeaf()) {
+		var bit = input.readBit();
+		if (bit == 0) {
+			tree = tree.left;
+		} else {
+			tree = tree.right;
+		}
+	}
+	var symbol = tree.symbol;
+	if (symbol < 256) { // símbolo literal
+		output.write(symbol);
+	} else if (symbol > 256) { // símbolo de comprimento
+		parseDistance(symbol, input, output);
+		//será encontrada a distância correcta e serão copiados entre 3
+		// e 258 bytes
+	} else {
+		// symbol == EOB == fim de bloco
+		break;
+	}
+}

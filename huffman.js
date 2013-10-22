@@ -137,28 +137,33 @@
 		tree[dir] = new HuffmanLeaf(value, 0);
 	};
 
-	var fixedHuffmanTree = new HuffmanNode();
+	var defaultHLIT = new HuffmanNode(); //default HLIT tree
 
 	(function(){
 		var code = 0x30; // spec says 00110000
 		for (var i = 0; i < 144; i++) {
-			insertIntoHuffman(fixedHuffmanTree, code++, 8, i);
+			insertIntoHuffman(defaultHLIT, code++, 8, i);
 		}
 		code = 0x190; //spec says 110010000
 		for (var i = 144; i < 256; i++) {
-			insertIntoHuffman(fixedHuffmanTree, code++, 9, i);
+			insertIntoHuffman(defaultHLIT, code++, 9, i);
 		}
 		code = 0;
 		for (var i = 256; i < 280; i++) {
-			insertIntoHuffman(fixedHuffmanTree, code++, 7, i);
+			insertIntoHuffman(defaultHLIT, code++, 7, i);
 		}
 		code = 0xc0 //spec says 11000000
 		for (var i = 280; i < 288; i++) {
-			insertIntoHuffman(fixedHuffmanTree, code++, 8, i);
+			insertIntoHuffman(defaultHLIT, code++, 8, i);
 		}
 	})();
 
-
+	var defaultHDIST = new HuffmanNode(); //default HDIST tree
+	(function(){
+		for (var i = 0; i < 32) {
+			insertIntoHuffman(defaultHDIST, i, 5, i);
+		}
+	})();
 	var printSymbols = function printSymbols(tree, depth) {
 		if (tree.leaf) {
 			console.log(tree.value, depth);
@@ -168,7 +173,7 @@
 			printSymbols(tree.right, depth);
 		}
 	};
-	printSymbols(fixedHuffmanTree, 0);
+	printSymbols(defaultHLIT, 0);
 
 
 

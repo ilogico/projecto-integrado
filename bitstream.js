@@ -54,22 +54,37 @@
 
 	var BUFFER_SIZE = Math.pow(2, 15); //32KB
 	var OutputBuffer = function OutputBuffer() {
-		this.container = [];
-		this.currentBuffer = new Uint8Array(BUFFER_SIZE);
+		this.container = [new Uint8Array(BUFFER_SIZE)];
 		this.currentBufferLength = 0;
+	};
+
+	OutputBuffer.prototype.currentBuffer = function() {
+		return this.container[this.container.length - 1];
 	};
 
 	OutputBuffer.prototype.write = function(b) {
 		if (this.currentBufferLength >= BUFFER_SIZE) {
-			this.container.push(this.currentBuffer);
+			this.container.push(new Uint8Array(BUFFER_SIZE));
 			this.currentBufferLength = 0;
 		}
-		this.currentBuffer[this.currentBufferLength++] = b;
+		this.currentBuffer()[this.currentBufferLength++] = b;
 	};
 
 	OutputBuffer.prototype.copy = function(length, distance) {
-		
-
+		var bufidx = this.container.length - 1;
+		var pos = this.currentBufferLength - distance;
+		if (pos < 0) {
+			bufidx--
+			pos += BUFFER_SIZE;
+		}
+		var readBuf = this.container[bufidx];
+		while (length > 0) {
+			this.write(readBuf[pos++]);
+			length--;
+			if (pos >= BUFFER_SIZE) {
+				readBuf = this.container[++bufidx];
+			}
+		}
 	};
 
 
