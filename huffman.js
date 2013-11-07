@@ -92,6 +92,18 @@
 
 	var HuffmanNode = function HuffmanNode() {};
 
+	HuffmanNode.prototype.insertCode = function(code, codeSize, value) {
+		var tree = this;
+		var dir;
+		while (codeSize-- > 1) {
+			dir = (code >> codeSize) & 1 ? "right" : "left";
+			if (tree[dir] == null) tree[dir] = new HuffmanNode();
+			tree = tree[dir];
+		}
+		dir = (code >> codeSize) & 1 ? "right" : "left";
+		tree[dir] = new HuffmanLeaf(value, 0);
+	};
+
 	var HuffmanLeaf = function HuffmanLeaf(value, count) {
 		this.value = value;
 		this.count = count;
@@ -111,7 +123,8 @@
 		return n0.count - n1.count;
 	}
 
-	var makeHuffmanTree = function(a) {
+	var fromFrequencies = function(a) {
+		//makes a HuffmanTree from an array of frequencies
 		var h = new Heap(huffmanComp, a.map(function(v, i) {
 			return new HuffmanLeaf(i, v);
 		}));
@@ -126,15 +139,41 @@
 		return current;
 	};
 
-	var insertIntoHuffman = function(tree, code, codeSize, value) {
-		var dir;
-		while (codeSize-- > 1) {
-			dir = (code >> codeSize) & 1 ? "right" : "left";
-			if (tree[dir] == null) tree[dir] = new HuffmanNode();
-			tree = tree[dir];
+	var fromCodeLengths = function(lengths, count) {
+		/*
+			makes a Huffman Tree from the code lengths
+			length count can optionally be provided
+			both are arrays
+		*/
+		if (count == null) {
+			count = [];
+			for (var i = 0, l = lengths.length; i < l; i++) {
+				var cl = lengths[i] || 0;
+				if (count[cl] == null) {
+					count[cl] = 1;
+				} else {
+					count[cl]++;
+				}
+			}
 		}
-		dir = (code >> codeSize) & 1 ? "right" : "left";
-		tree[dir] = new HuffmanLeaf(value, 0);
+		count[0] = 0;
+		var codes = [0];
+		var code = 0;
+		for (var i = 1, l = count.length; i < l; i++) {
+			code = (code + count[i - 1]) << 1;
+			codes[i] = code;
+		}
+
+		var tree = new HuffmanNode();
+		for (var i = 0, l = lengths.length; i < l; i++) {
+			var length = lengths[i];
+			if (length) {
+				code = codes[length]++;
+				tree.insertCode(code, length, i);
+			}
+
+		}
+		return tree;
 	};
 
 	var defaultHLIT = new HuffmanNode(); //default HLIT tree
@@ -142,26 +181,26 @@
 	(function(){
 		var code = 0x30; // spec says 00110000
 		for (var i = 0; i < 144; i++) {
-			insertIntoHuffman(defaultHLIT, code++, 8, i);
+			defaultHLIT.insertCode(code++, 8, i);
 		}
 		code = 0x190; //spec says 110010000
 		for (var i = 144; i < 256; i++) {
-			insertIntoHuffman(defaultHLIT, code++, 9, i);
+			defaultHLIT.insertCode(code++, 9, i);
 		}
 		code = 0;
 		for (var i = 256; i < 280; i++) {
-			insertIntoHuffman(defaultHLIT, code++, 7, i);
+			defaultHLIT.insertCode(code++, 7, i);
 		}
 		code = 0xc0 //spec says 11000000
 		for (var i = 280; i < 288; i++) {
-			insertIntoHuffman(defaultHLIT, code++, 8, i);
+			defaultHLIT.insertCode(code++, 8, i);
 		}
 	})();
 
 	var defaultHDIST = new HuffmanNode(); //default HDIST tree
-	(function(){
-		for (var i = 0; i < 32) {
-			insertIntoHuffman(defaultHDIST, i, 5, i);
+	(function(){ 
+		for (var i = 0; i < 32; i++) {
+			defaultHDIST.insertCode(i, 5, i);
 		}
 	})();
 	var printSymbols = function printSymbols(tree, depth) {
@@ -179,8 +218,8 @@
 
 
 	module.exports.HuffmanNode = HuffmanNode;
-	module.exports.insertIntoHuffman = insertIntoHuffman;
-	module.exports.makeHuffmanTree = makeHuffmanTree;
+	module.exports.fromFrequencies = fromFrequencies;
+	module.exports.fromCodeLengths = fromCodeLengths;
 })();
 
 // parent = (self - 1) << 1
