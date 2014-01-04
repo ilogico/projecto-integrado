@@ -2,7 +2,6 @@
 class Heap
 	bubbleDown = (a, i, comp)->
 		val = a[i]
-		parent_idx = i - 1 >> 1
 		while i > 0
 			parent = i - 1 >> 1
 			if comp(a[parent], val) > 0
@@ -11,7 +10,7 @@ class Heap
 			else
 				break
 		a[i] = val
-		undefined
+		return
 
 	bubbleUp = (a, comp)->
 		i = 0
@@ -32,28 +31,32 @@ class Heap
 			else
 				break
 		a[i] = value
-		undefined
+		return
 
-	heapify = @heapify = (a, comp)->
+	heapify = (a, comp)->
 		i = 0
 		l = a.length
 		while i < l
 			bubbleDown(a, i++, comp)
-		undefined
+		return
 
 	constructor: (@comp, @array = [])->
+		heapify(@array, @comp)
 
 	push: (val)->
 		l = @array.length
 		@array.push val
 		bubbleDown(@array, l, @comp)
-		undefined
+		return
 
 	pop: ->
-		val = @array[0]
-		@array[0] = @array.pop()
-		bubbleUp(@array, @comp)
-		val
+		if @array.length > 1
+			val = @array[0]
+			@array[0] = @array.pop()
+			bubbleUp(@array, @comp)
+			val
+		else
+			@array.pop()
 
 	pushPop: (val)->
 		if @array.length and @comp(@array[0], val) < 0

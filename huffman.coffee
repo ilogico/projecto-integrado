@@ -1,6 +1,6 @@
 "use strict"
 
-Heap = require "heap"
+Heap = require "./heap"
 
 class HuffmanNode
 	constructor: (value)->
@@ -19,7 +19,8 @@ class HuffmanNode
 			codeLength--
 			dir = (code >> codeLength) & 1
 		tree[dir] = new HuffmanNode(value)
-		undefined
+		return
+
 
 
 
@@ -32,16 +33,47 @@ class HuffmanBranch extends HuffmanNode
 
 class HuffmanLeaf extends HuffmanNode
 	constructor: (@value, @weight)->
+		@leaf = true
 
 class HuffmanTree
-	constructor: (@root)->
 
 	comp = (n0, n1)->
 		n0.weight - n1.weight
 
-	@fromFrequencies = (a)->
+	codeLengthsFromTree = (tree, depth, buckets, excess, maxLength)->
+		depth++
+		if tree[0].leaf
+			if depth > maxLength
+				excess.push tree[0]
+			else
+				buckets[depth - 1].push tree[0]
+		else
+			codeLengthsFromTree(tree[0], depth, buckets, excess, maxLength)
+		if tree[1].leaf
+			if depth > maxLength
+				excess.push tree[1]
+			else
+				buckets[depth - 1].push tree[1]
+		else
+			codeLengthsFromTree(tree[1], depth, buckets, excess, maxLength)
+		return
+
+	@codesFromTree = codesFromTree = (tree, depth, prefix, codes)->
+		depth++
+		for i in [0..1] when tree[i]?
+			p = (prefix << 1) | i
+			if tree[i].leaf
+				codes[tree[i].value] =
+					code: p
+					length: depth
+			else
+				codesFromTree(tree[i], depth, p, codes)
+		codes
+
+	@fromFrequencies = (a, maxLength = 15)->
+		size = a.length
 		a = (new HuffmanLeaf(v, w) for w, v in a)
-		h = new Heap(a)
+		h = new Heap(comp, a)
 
 		current = h.pop()
 
@@ -50,29 +82,90 @@ class HuffmanTree
 
 		while h.size()
 			current = h.pushPop(new HuffmanBranch(current, h.pop()))
-	current
 
-	@fromCodeLengths = (lengths, count)->
+
+		# maximum symbol size is maxLength
+		excess = []
+		buckets = ([] for i in [0...maxLength])
+		codeLengthsFromTree(current, 0, buckets, excess, maxLength)
+
+		excess.sort(comp).reverse()
+		bucket.sort(comp).reverse() for bucket in buckets
+
+		i = maxLength - 2
+		while excess.length
+			while excess.length and buckets[i].length
+				j = i + 1
+				buckets[j].unshift buckets[i].pop()
+				promote = 1
+				while j < maxLength - 1
+					next = j + 1
+					k = promote
+					while k > 0 and buckets[next].length
+						buckets[j].push buckets[next].shift()
+						k--
+					promote += k * 2
+
+					j = next
+				while excess.length and promote
+					buckets[maxLength - 1].push excess.shift()
+					promote--
+
+			i--
+
+		count = [0]
+		lengths = (0 for i in [0...size])
+		for bucket, i in buckets
+			l = i + 1
+			count[l] = bucket.length
+			for code in bucket
+				lengths[code.value] = l
+
+		###
+		confirmation = Math.pow(2, maxLength)
+		total = confirmation
+		for length in lengths when length > 0
+			confirmation -= (total >> length)
+		# confirmation > 0
+		###
+		
+		tree = fromCodeLengths(lengths)
+		codesFromTree(tree, 0, 0, {})
+
+
+
+
+
+
+
+	fromCodeLengths = @fromCodeLengths = (lengths, count, maxLength = 15)->
 		if !count?
 			count = []
+			maxL = 0
 			for l in lengths
+				maxL = if l > maxL then l else maxL
 				count[l] or= 0
 				count[l]++
-
+			for i in [0..maxL]
+				count[i] or= 0
 
 		tree = new HuffmanNode()
 		count[0] = 0
 		codes = [0]
 		code = 0
-		for l, value in [lengths][1..] when l > 0
+		for i in [1..maxLength]
+			code = (code + count[i - 1]) << 1
+			codes[i] = code
+
+		for l, value in lengths when l > 0
 			code = codes[l]++
 			HuffmanNode.insertCode(tree, code, l, value)
-		new HuffmanTree(tree)
+		tree
 
 	@defaultLit = ->
 		lengths = []
 		lengths.push(8) for i in [0..143]
-		lengths.push(9) for i in [144..255]
+		lengths.push(9) for i in [144.. 255]
 		lengths.push(7) for i in [256..279]
 		lengths.push(8) for i in [280..287]
 		count = (0 for i in [0..6])
